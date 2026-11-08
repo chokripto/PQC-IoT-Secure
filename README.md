@@ -1,9 +1,9 @@
-# Post-Quantum Secure Communication for IoT (Kyber + AES-GCM)
+# Post-Quantum Secure Communication for IoT (ML-KEM-768 + AES-GCM)
 
 ## Overview
 This repository demonstrates a practical **post-quantum secure channel** between a simulated IoT device and a server.
 The design is **hybrid**:
-- Post-quantum cryptography (PQC) is used for **key establishment** (Kyber KEM).
+- Post-quantum cryptography (PQC) is used for **key establishment** (ML-KEM-768).
 - Symmetric cryptography is used for **data protection** (AES-GCM AEAD).
 
 The goal is an industry-oriented, deployable architecture that is **quantum-resistant** for long-lived IoT deployments.
@@ -31,14 +31,14 @@ See: `docs/threat_model.md`.
 
 ## Protocol Design
 ### Handshake (Key Establishment)
-1. Server generates Kyber keys:
-   - $(pk, sk) \\leftarrow \\text{Kyber.KeyGen}()$
+1. Server generates ML-KEM keys:
+   - $(pk, sk) \\leftarrow \\text{ML-KEM.KeyGen}()$
 2. Server sends `pk` to device.
 3. Device encapsulates:
-   - $(ct, ss) \\leftarrow \\text{Kyber.Encap}(pk)$
+   - $(ct, ss) \\leftarrow \\text{ML-KEM.Encap}(pk)$
 4. Device sends `ct` to server.
 5. Server decapsulates:
-   - $ss \\leftarrow \\text{Kyber.Decap}(sk, ct)$
+   - $ss \\leftarrow \\text{ML-KEM.Decap}(sk, ct)$
 6. Both derive a session key:
    - $K \\leftarrow \\text{HKDF}(ss, \\text{salt}, \\text{info})$
 
@@ -54,7 +54,7 @@ See: `docs/protocol.md`.
 
 ## Tech Stack
 - Python (reference implementation)
-- PQC library (Kyber KEM)
+- PQC library (ML-KEM-768)
 - AES-GCM (AEAD)
 - HKDF (key derivation)
 - Simple client/server transport (TCP) for demonstration
@@ -78,7 +78,7 @@ See: `docs/protocol.md`.
 3. Start device client:
    - `python -m src.device.device_client`
 4. Observe:
-   - Kyber handshake
+   - ML-KEM handshake
    - Derived session key (printed as hash / truncated)
    - AES-GCM encrypted messages
 
@@ -95,7 +95,7 @@ See: `docs/protocol.md`.
 ---
 
 ## Roadmap
-- [ ] Implement Kyber KEM handshake
+- [x] Implement ML-KEM-768 handshake
 - [ ] Implement HKDF key derivation
 - [ ] Implement AES-GCM secure channel
 - [ ] Add replay protection and session IDs
