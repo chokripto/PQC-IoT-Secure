@@ -1,8 +1,8 @@
 # Protocol (v1)
 
 ## Handshake
-- Server generates Kyber keypair and sends `pk`, `session_id`, `salt`, and `server_nonce_prefix`.
-- Device encapsulates with Kyber using `pk`, producing `ct` and `shared_secret`.
+- Server generates ML-KEM-768 keypair and sends `pk`, `session_id`, `salt`, and `server_nonce_prefix`.
+- Device encapsulates with ML-KEM-768 using `pk`, producing `ct` and `shared_secret`.
 - Device sends `ct` and its `client_nonce_prefix`.
 - Both sides derive `session_key = HKDF(shared_secret, salt, info)` where `info` binds the session_id.
 
