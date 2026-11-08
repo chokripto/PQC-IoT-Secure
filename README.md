@@ -39,8 +39,10 @@ See: `docs/threat_model.md`.
 4. Device sends `ct` to server.
 5. Server decapsulates:
    - $ss \\leftarrow \\text{ML-KEM.Decap}(sk, ct)$
-6. Both derive a session key:
-   - $K \\leftarrow \\text{HKDF}(ss, \\text{salt}, \\text{info})$
+6. Before encapsulation, the device verifies an **ML-DSA-65 signature** over the
+   canonical server transcript using a public identity key provisioned out of band.
+7. Both derive a session key bound to the full handshake transcript:
+   - $K \\leftarrow \\text{HKDF}(ss, \\text{salt}, \\text{transcript-hash})$
 
 ### Secure Data Channel
 Application messages use AEAD:
@@ -73,11 +75,14 @@ See: `docs/protocol.md`.
 ## How to Run (Planned)
 1. Install dependencies:
    - `pip install -r requirements.txt`
-2. Start server:
+2. Generate the server identity once:
+   - `python -m scripts.generate_server_identity`
+   - The private key is created with mode `0600` and must never be committed.
+3. Start server:
    - `python -m src.server.server_app`
-3. Start device client:
+4. Start device client:
    - `python -m src.device.device_client`
-4. Observe:
+5. Observe:
    - ML-KEM handshake
    - Derived session key (printed as hash / truncated)
    - AES-GCM encrypted messages
@@ -85,6 +90,9 @@ See: `docs/protocol.md`.
 ---
 
 ## Security Notes
+- The server handshake is authenticated with ML-DSA-65.
+- The device trusts only the provisioned server identity public key.
+- Identity keys are mounted read-only and excluded from Git and Docker image layers.
 - Session key material is never logged directly (only hashes/truncations for demo).
 - Nonce reuse is prevented (per-session counter).
 - This is a demo; production hardening requires:
@@ -100,7 +108,8 @@ See: `docs/protocol.md`.
 - [ ] Implement AES-GCM secure channel
 - [ ] Add replay protection and session IDs
 - [ ] Add unit tests and negative tests
-- [ ] Add optional mutual authentication (certificate / key pinning)
+- [x] Authenticate the server with a pinned ML-DSA-65 identity key
+- [ ] Add device authentication and identity lifecycle management
 - [ ] Add metrics: latency + message overhead
 
 ---
