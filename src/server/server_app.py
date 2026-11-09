@@ -7,6 +7,7 @@ import oqs
 from src.common.device_registry import (
     authorize_device,
     load_device_registry,
+    verify_device_signature,
 )
 from src.common.crypto_utils import (
     NonceState,
@@ -131,15 +132,11 @@ def run_server() -> None:
                         device_key_id,
                         server_transcript,
                     )
-                    with oqs.Signature(SIGNATURE_ALG) as device_verifier:
-                        if not device_verifier.verify(
-                            client_transcript,
-                            device_signature,
-                            device_record.public_key,
-                        ):
-                            raise ValueError(
-                                "Invalid ML-DSA device signature"
-                            )
+                    verify_device_signature(
+                        device_record,
+                        client_transcript,
+                        device_signature,
+                    )
 
                     shared_secret = kem.decap_secret(ciphertext)
                     transcript_hash = handshake_transcript_hash(
