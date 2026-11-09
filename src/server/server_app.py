@@ -4,6 +4,10 @@ import socket
 
 import oqs
 
+from src.common.device_registry import (
+    authorize_device,
+    load_device_registry,
+)
 from src.common.crypto_utils import (
     NonceState,
     aead_decrypt,
@@ -18,14 +22,14 @@ from src.common.protocol import (
     KEM_ALG,
     PROTOCOL_VERSION,
     SIGNATURE_ALG,
-    build_client_kem_transcript,
+    build_client_auth_transcript,
     build_info,
     build_server_hello_transcript,
     handshake_transcript_hash,
     identity_key_id,
 )
 from src.common.validation import (
-    validate_client_kem,
+    validate_client_auth,
     validate_encrypted_message,
 )
 
@@ -46,6 +50,7 @@ def run_server() -> None:
     identity_public_key, identity_secret_key = (
         load_server_identity_keypair()
     )
+    device_registry = load_device_registry()
     server_key_id = identity_key_id(identity_public_key)
 
     with oqs.Signature(
@@ -109,12 +114,34 @@ def run_server() -> None:
                     )
 
                     message = recv_frame(conn)
-                    ciphertext = validate_client_kem(message)
-                    shared_secret = kem.decap_secret(ciphertext)
-
-                    client_transcript = build_client_kem_transcript(
-                        ciphertext
+                    (
+                        ciphertext,
+                        device_id,
+                        device_key_id,
+                        device_signature,
+                    ) = validate_client_auth(message)
+                    device_record = authorize_device(
+                        device_registry,
+                        device_id,
+                        device_key_id,
                     )
+                    client_transcript = build_client_auth_transcript(
+                        ciphertext,
+                        device_id,
+                        device_key_id,
+                        server_transcript,
+                    )
+                    with oqs.Signature(SIGNATURE_ALG) as device_verifier:
+                        if not device_verifier.verify(
+                            client_transcript,
+                            device_signature,
+                            device_record.public_key,
+                        ):
+                            raise ValueError(
+                                "Invalid ML-DSA device signature"
+                            )
+
+                    shared_secret = kem.decap_secret(ciphertext)
                     transcript_hash = handshake_transcript_hash(
                         server_transcript, client_transcript
                     )
@@ -123,10 +150,17 @@ def run_server() -> None:
                         shared_secret, salt, context
                     )
 
-                    print("[server] Authenticated session established.")
                     print(
-                        f"[server] identity_key_id="
+                        "[server] Mutually authenticated session established."
+                    )
+                    print(
+                        f"[server] server_key_id="
                         f"{server_key_id.hex()[:20]}"
+                    )
+                    print(f"[server] device_id={device_id}")
+                    print(
+                        f"[server] device_key_id="
+                        f"{device_key_id.hex()[:20]}"
                     )
                     print(
                         f"[server] transcript(fp)="
