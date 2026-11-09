@@ -1,7 +1,7 @@
 import hmac
 import os
 import socket
-from typing import Any, Dict
+from typing import Any
 
 import oqs
 
@@ -164,7 +164,7 @@ def run_server() -> None:
                         },
                     )
 
-                    data_message: Dict[str, Any] = recv_frame(conn)
+                    data_message: dict[str, Any] = recv_frame(conn)
                     if data_message.get("type") != "data":
                         raise ValueError(
                             "Unexpected message type: "
