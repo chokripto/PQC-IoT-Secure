@@ -1,5 +1,7 @@
 # Post-Quantum Secure Communication for IoT
 
+[![CI](https://github.com/chokripto/PQC-IoT-Secure/actions/workflows/ci.yml/badge.svg)](https://github.com/chokripto/PQC-IoT-Secure/actions/workflows/ci.yml)
+
 ## Overview
 
 This repository is a research and educational reference implementation of an
@@ -95,7 +97,7 @@ docker run --rm pqc-iot-secure pytest -v
 - [x] Directional traffic keys and nonce bases
 - [x] AES-256-GCM encrypted data channel
 - [x] Negative cryptographic tests
-- [ ] Automated CI and dependency scanning
+- [x] Automated CI and dependency scanning
 - [ ] Input and network hardening
 - [ ] Reproducible IoT benchmarks
 - [ ] Device authentication and identity lifecycle management
