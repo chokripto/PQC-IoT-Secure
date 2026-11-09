@@ -5,11 +5,12 @@
 ## Overview
 
 This repository is a research and educational reference implementation of an
-authenticated post-quantum secure channel between a simulated IoT device and a
-server.
+mutually authenticated post-quantum secure channel between a simulated IoT
+device and a server.
 
 - **ML-KEM-768** establishes a shared secret.
-- **ML-DSA-65** authenticates the server using an out-of-band pinned key.
+- **ML-DSA-65** mutually authenticates the server and an enrolled device.
+- A strict device registry enforces active, rotated, and revoked identities.
 - **HKDF-SHA-256** binds traffic secrets to the authenticated transcript.
 - **AES-256-GCM** protects application data.
 
@@ -18,40 +19,44 @@ The project is a prototype and is not a production replacement for TLS.
 ## Threat model
 
 The network attacker may observe, inject, modify, delete, and replay packets.
-The design targets confidentiality, integrity, server authentication,
+The design targets confidentiality, integrity, mutual peer authentication,
 transcript binding, replay detection, and resistance to store-now-decrypt-later
 attacks.
 
-Physical compromise, side channels, secure boot, device authentication, and
-the full identity lifecycle remain outside the current scope.
+Physical compromise, side channels, secure boot, remote attestation, and
+distributed fleet identity operations remain outside the current scope.
 
 See [docs/threat_model.md](docs/threat_model.md).
 
-## Protocol v2
+## Protocol v3
 
-1. The server creates an ephemeral ML-KEM-768 key pair.
-2. It signs the canonical server transcript with ML-DSA-65.
-3. The device verifies the signature using its provisioned public key.
-4. The device encapsulates only after successful authentication.
-5. Both peers bind the full transcript to HKDF-SHA-256.
-6. They derive independent AES-256-GCM keys and nonce bases for:
-   - device to server;
-   - server to device.
-7. Per-direction 64-bit counters provide unique 96-bit nonces and fail closed
-   before wraparound.
+1. The server signs its ephemeral ML-KEM-768 parameters with ML-DSA-65.
+2. The device verifies the pinned server identity before encapsulation.
+3. The device signs its ID, current key identifier, ML-KEM ciphertext, and the
+   server-transcript hash with its own ML-DSA-65 identity.
+4. The server requires an enrolled, active, current device key and verifies
+   proof of possession before ML-KEM decapsulation.
+5. Both peers bind the mutually authenticated transcript to HKDF-SHA-256.
+6. Independent AES-256-GCM keys and nonce bases protect both directions.
 
 See [docs/protocol.md](docs/protocol.md).
 
 ## Run with Docker
 
-Generate the server identity once:
+Generate the server identity and enroll the demo device once:
 
 ```bash
 mkdir -p secrets
 docker build -t pqc-iot-secure .
 docker run --rm -v "$PWD/secrets:/app/secrets" \
   pqc-iot-secure python -m scripts.generate_server_identity
+docker run --rm -v "$PWD/secrets:/app/secrets" \
+  pqc-iot-secure python -m scripts.manage_device_identity enroll \
+  --device-id device-001
 ```
+
+See [docs/device_identity.md](docs/device_identity.md) for rotation and
+revocation commands. Restart the demo server after registry changes.
 
 Start the server:
 
@@ -89,7 +94,8 @@ the measurement methodology, and comparison limitations.
 - The private ML-DSA identity key is excluded from Git and image layers.
 - Docker mounts identity material read-only.
 - Raw shared secrets and traffic keys are never logged.
-- Protocol v2 is intentionally incompatible with v1.
+- Protocol v3 is intentionally incompatible with v2.
+- The server rejects unknown, revoked, and stale-generation device keys.
 - Frames are capped at 64 KiB and must be strict UTF-8 JSON objects.
 - Duplicate or unknown fields, invalid Base64, and non-canonical field sizes are rejected.
 - Connected peers are subject to bounded network I/O timeouts.
@@ -116,7 +122,7 @@ the measurement methodology, and comparison limitations.
 - [x] Automated CI and dependency scanning
 - [x] Input and network hardening
 - [x] Reproducible IoT benchmarks
-- [ ] Device authentication and identity lifecycle management
+- [x] Device authentication and identity lifecycle management
 
 ## License
 
