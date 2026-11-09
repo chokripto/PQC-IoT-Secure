@@ -27,8 +27,10 @@ docker run --detach \
   --network-alias server \
   --env SERVER_IDENTITY_PUBLIC_KEY_FILE=/run/secrets/server_identity_public.key \
   --env SERVER_IDENTITY_SECRET_KEY_FILE=/run/secrets/server_identity_secret.key \
+  --env DEVICE_REGISTRY_FILE=/run/secrets/device_registry.json \
   --volume "$secrets_dir/server_identity_public.key:/run/secrets/server_identity_public.key:ro" \
   --volume "$secrets_dir/server_identity_secret.key:/run/secrets/server_identity_secret.key:ro" \
+  --volume "$secrets_dir/device_registry.json:/run/secrets/device_registry.json:ro" \
   "$image" >/dev/null
 
 for _ in $(seq 1 30); do
@@ -51,7 +53,12 @@ fi
 docker run --rm \
   --network "$network" \
   --env PINNED_SERVER_IDENTITY_PUBLIC_KEY_FILE=/run/secrets/server_identity_public.key \
+  --env DEVICE_ID=device-001 \
+  --env DEVICE_IDENTITY_PUBLIC_KEY_FILE=/run/secrets/device_identity_public.key \
+  --env DEVICE_IDENTITY_SECRET_KEY_FILE=/run/secrets/device_identity_secret.key \
   --volume "$secrets_dir/server_identity_public.key:/run/secrets/server_identity_public.key:ro" \
+  --volume "$secrets_dir/device-001/device_identity_public.key:/run/secrets/device_identity_public.key:ro" \
+  --volume "$secrets_dir/device-001/device_identity_secret.key:/run/secrets/device_identity_secret.key:ro" \
   "$image" \
   python -m src.device.device_client
 
