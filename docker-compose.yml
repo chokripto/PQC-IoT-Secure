@@ -6,9 +6,11 @@ services:
     environment:
       SERVER_IDENTITY_PUBLIC_KEY_FILE: /run/secrets/server_identity_public.key
       SERVER_IDENTITY_SECRET_KEY_FILE: /run/secrets/server_identity_secret.key
+      DEVICE_REGISTRY_FILE: /run/secrets/device_registry.json
     volumes:
       - ./secrets/server_identity_public.key:/run/secrets/server_identity_public.key:ro
       - ./secrets/server_identity_secret.key:/run/secrets/server_identity_secret.key:ro
+      - ./secrets/device_registry.json:/run/secrets/device_registry.json:ro
     ports:
       - "9000:9000"
 
@@ -20,5 +22,10 @@ services:
     command: ["python", "-m", "src.device.device_client"]
     environment:
       PINNED_SERVER_IDENTITY_PUBLIC_KEY_FILE: /run/secrets/server_identity_public.key
+      DEVICE_ID: device-001
+      DEVICE_IDENTITY_PUBLIC_KEY_FILE: /run/secrets/device_identity_public.key
+      DEVICE_IDENTITY_SECRET_KEY_FILE: /run/secrets/device_identity_secret.key
     volumes:
       - ./secrets/server_identity_public.key:/run/secrets/server_identity_public.key:ro
+      - ./secrets/device-001/device_identity_public.key:/run/secrets/device_identity_public.key:ro
+      - ./secrets/device-001/device_identity_secret.key:/run/secrets/device_identity_secret.key:ro
