@@ -15,7 +15,6 @@ from src.common.identity import load_pinned_server_public_key
 from src.common.message import recv_frame, send_frame
 from src.common.protocol import (
     KEM_ALG,
-    PROTOCOL_VERSION,
     SIGNATURE_ALG,
     build_client_kem_transcript,
     build_info,
