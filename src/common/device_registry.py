@@ -93,7 +93,7 @@ def parse_device_registry(document: Any) -> dict[str, DeviceRecord]:
     if document["schema_version"] != REGISTRY_SCHEMA_VERSION:
         raise ValueError("Unsupported device registry schema version")
     if not isinstance(document["devices"], list):
-        raise ValueError("Device registry devices must be a list")
+        raise TypeError("Device registry devices must be a list")
 
     records: dict[str, DeviceRecord] = {}
     for raw_record in document["devices"]:
