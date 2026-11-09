@@ -3,6 +3,12 @@ services:
     build: .
     container_name: pqc_server
     command: ["python", "-m", "src.server.server_app"]
+    environment:
+      SERVER_IDENTITY_PUBLIC_KEY_FILE: /run/secrets/server_identity_public.key
+      SERVER_IDENTITY_SECRET_KEY_FILE: /run/secrets/server_identity_secret.key
+    volumes:
+      - ./secrets/server_identity_public.key:/run/secrets/server_identity_public.key:ro
+      - ./secrets/server_identity_secret.key:/run/secrets/server_identity_secret.key:ro
     ports:
       - "9000:9000"
 
@@ -12,3 +18,7 @@ services:
     depends_on:
       - server
     command: ["python", "-m", "src.device.device_client"]
+    environment:
+      PINNED_SERVER_IDENTITY_PUBLIC_KEY_FILE: /run/secrets/server_identity_public.key
+    volumes:
+      - ./secrets/server_identity_public.key:/run/secrets/server_identity_public.key:ro
