@@ -9,7 +9,14 @@ secrets_dir="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/pqc-iot-secrets-${GITHUB_RUN_ID:-lo
 cleanup() {
   docker rm -f "$server_container" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
-  rm -rf "$secrets_dir"
+  if [[ -d "$secrets_dir" ]]; then
+    docker run --rm \
+      --volume "$secrets_dir:/cleanup" \
+      "$image" \
+      sh -c 'find /cleanup -mindepth 1 -delete' \
+      >/dev/null 2>&1 || true
+    rm -rf "$secrets_dir"
+  fi
 }
 trap cleanup EXIT
 
