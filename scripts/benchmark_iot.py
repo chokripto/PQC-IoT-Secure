@@ -141,57 +141,59 @@ def run_benchmarks(iterations: int, warmup: int) -> dict[str, Any]:
                     ):
                         raise RuntimeError("ML-DSA benchmark setup failed")
 
-                    with oqs.KeyEncapsulation(KEM_ALG) as kem_keygen:
-                        with oqs.Signature(SIGNATURE_ALG) as sig_keygen:
-                            timings = {
-                                "ml_kem_768_keygen": measure(
-                                    kem_keygen.generate_keypair,
-                                    iterations,
-                                    warmup,
+                    with (
+                        oqs.KeyEncapsulation(KEM_ALG) as kem_keygen,
+                        oqs.Signature(SIGNATURE_ALG) as sig_keygen,
+                    ):
+                        timings = {
+                            "ml_kem_768_keygen": measure(
+                                kem_keygen.generate_keypair,
+                                iterations,
+                                warmup,
+                            ),
+                            "ml_kem_768_encapsulate": measure(
+                                lambda: client_kem.encap_secret(
+                                    kem_public_key
                                 ),
-                                "ml_kem_768_encapsulate": measure(
-                                    lambda: client_kem.encap_secret(
-                                        kem_public_key
-                                    ),
-                                    iterations,
-                                    warmup,
+                                iterations,
+                                warmup,
+                            ),
+                            "ml_kem_768_decapsulate": measure(
+                                lambda: server_kem.decap_secret(
+                                    kem_ciphertext
                                 ),
-                                "ml_kem_768_decapsulate": measure(
-                                    lambda: server_kem.decap_secret(
-                                        kem_ciphertext
-                                    ),
-                                    iterations,
-                                    warmup,
+                                iterations,
+                                warmup,
+                            ),
+                            "ml_dsa_65_keygen": measure(
+                                sig_keygen.generate_keypair,
+                                iterations,
+                                warmup,
+                            ),
+                            "ml_dsa_65_sign": measure(
+                                lambda: signer.sign(transcript),
+                                iterations,
+                                warmup,
+                            ),
+                            "ml_dsa_65_verify": measure(
+                                lambda: verifier.verify(
+                                    transcript,
+                                    signature,
+                                    identity_public_key,
                                 ),
-                                "ml_dsa_65_keygen": measure(
-                                    sig_keygen.generate_keypair,
-                                    iterations,
-                                    warmup,
+                                iterations,
+                                warmup,
+                            ),
+                            "hkdf_sha256_traffic_secrets": measure(
+                                lambda: derive_traffic_secrets(
+                                    shared_secret,
+                                    SALT,
+                                    CONTEXT,
                                 ),
-                                "ml_dsa_65_sign": measure(
-                                    lambda: signer.sign(transcript),
-                                    iterations,
-                                    warmup,
-                                ),
-                                "ml_dsa_65_verify": measure(
-                                    lambda: verifier.verify(
-                                        transcript,
-                                        signature,
-                                        identity_public_key,
-                                    ),
-                                    iterations,
-                                    warmup,
-                                ),
-                                "hkdf_sha256_traffic_secrets": measure(
-                                    lambda: derive_traffic_secrets(
-                                        shared_secret,
-                                        SALT,
-                                        CONTEXT,
-                                    ),
-                                    iterations,
-                                    warmup,
-                                ),
-                            }
+                                iterations,
+                                warmup,
+                            ),
+                        }
 
                     traffic = derive_traffic_secrets(
                         shared_secret, SALT, CONTEXT
