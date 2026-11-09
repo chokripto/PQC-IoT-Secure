@@ -1,7 +1,6 @@
 import base64
 import hashlib
 from dataclasses import dataclass
-from typing import Tuple
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -15,32 +14,37 @@ def b64d(s: str) -> bytes:
 
 
 def short_fingerprint(data: bytes, n: int = 10) -> str:
-    """
-    For demo-only logging: returns a short hash fingerprint, not the secret itself.
-    """
-    h = hashlib.sha256(data).hexdigest()
-    return h[: 2 * n]
+    """Return a demo-only hash fingerprint, never the secret itself."""
+    return hashlib.sha256(data).hexdigest()[: 2 * n]
 
 
 @dataclass
 class NonceState:
-    """
-    AES-GCM requires a unique 12-byte nonce per key.
-    We'll generate: nonce = prefix(4 bytes) + counter(8 bytes).
-    """
+    """Generate unique 96-bit AES-GCM nonces from a base and counter."""
+
     prefix4: bytes
     counter: int = 0
 
+    def __post_init__(self) -> None:
+        if len(self.prefix4) != 4:
+            raise ValueError("AES-GCM nonce base must be exactly 4 bytes")
+        if not 0 <= self.counter <= (2**64 - 1):
+            raise ValueError("Nonce counter is outside the uint64 range")
+
     def next_nonce(self) -> bytes:
+        if self.counter == 2**64 - 1:
+            raise OverflowError("AES-GCM nonce counter exhausted")
         self.counter += 1
         return self.prefix4 + self.counter.to_bytes(8, "big")
 
 
-def aead_encrypt(key: bytes, nonce: bytes, plaintext: bytes, aad: bytes) -> bytes:
-    aesgcm = AESGCM(key)
-    return aesgcm.encrypt(nonce, plaintext, aad)
+def aead_encrypt(
+    key: bytes, nonce: bytes, plaintext: bytes, aad: bytes
+) -> bytes:
+    return AESGCM(key).encrypt(nonce, plaintext, aad)
 
 
-def aead_decrypt(key: bytes, nonce: bytes, ciphertext: bytes, aad: bytes) -> bytes:
-    aesgcm = AESGCM(key)
-    return aesgcm.decrypt(nonce, ciphertext, aad)
+def aead_decrypt(
+    key: bytes, nonce: bytes, ciphertext: bytes, aad: bytes
+) -> bytes:
+    return AESGCM(key).decrypt(nonce, ciphertext, aad)

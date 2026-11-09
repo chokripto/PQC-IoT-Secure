@@ -1,5 +1,4 @@
 import hmac
-import os
 import socket
 
 import oqs
@@ -12,7 +11,7 @@ from src.common.crypto_utils import (
     b64e,
     short_fingerprint,
 )
-from src.common.hkdf import derive_session_key
+from src.common.hkdf import derive_traffic_secrets
 from src.common.identity import load_pinned_server_public_key
 from src.common.message import recv_frame, send_frame
 from src.common.protocol import (
@@ -50,14 +49,13 @@ def run_device() -> None:
             )
         if hello.get("identity_alg") != SIGNATURE_ALG:
             raise ValueError(
-                f"Unsupported identity algorithm: "
+                "Unsupported identity algorithm: "
                 f"{hello.get('identity_alg')!r}"
             )
 
         kem_public_key = b64d(hello["pk_b64"])
         session_id = b64d(hello["session_id_b64"])
         salt = b64d(hello["salt_b64"])
-        server_nonce_prefix = b64d(hello["server_nonce_prefix_b64"])
         received_key_id = b64d(hello["identity_key_id_b64"])
         server_signature = b64d(hello["signature_b64"])
 
@@ -70,7 +68,6 @@ def run_device() -> None:
             kem_public_key,
             session_id,
             salt,
-            server_nonce_prefix,
             received_key_id,
         )
         with oqs.Signature(SIGNATURE_ALG) as verifier:
@@ -83,21 +80,15 @@ def run_device() -> None:
                     "Invalid ML-DSA signature on server handshake"
                 )
 
-        # The server identity is authenticated before KEM encapsulation.
         with oqs.KeyEncapsulation(KEM_ALG) as kem:
-            ct, shared_secret = kem.encap_secret(kem_public_key)
+            ciphertext, shared_secret = kem.encap_secret(kem_public_key)
 
-        client_nonce_prefix = os.urandom(4)
-        client_transcript = build_client_kem_transcript(
-            ct, client_nonce_prefix
-        )
+        client_transcript = build_client_kem_transcript(ciphertext)
         transcript_hash = handshake_transcript_hash(
             server_transcript, client_transcript
         )
-        info = build_info(session_id, transcript_hash)
-        session_key = derive_session_key(
-            shared_secret, salt=salt, info=info, length=32
-        )
+        context = build_info(session_id, transcript_hash)
+        traffic = derive_traffic_secrets(shared_secret, salt, context)
 
         print("[device] Server identity authenticated.")
         print(f"[device] identity_key_id={pinned_key_id.hex()[:20]}")
@@ -111,13 +102,12 @@ def run_device() -> None:
             {
                 "type": "client_kem",
                 "kem_alg": KEM_ALG,
-                "ct_b64": b64e(ct),
-                "client_nonce_prefix_b64": b64e(client_nonce_prefix),
+                "ct_b64": b64e(ciphertext),
             },
         )
 
-        send_state = NonceState(prefix4=client_nonce_prefix, counter=0)
-        recv_state = NonceState(prefix4=server_nonce_prefix, counter=0)
+        send_state = NonceState(traffic.device_to_server_nonce_base)
+        recv_state = NonceState(traffic.server_to_device_nonce_base)
 
         ack = recv_frame(s)
         if ack.get("type") != "session_ack":
@@ -125,23 +115,31 @@ def run_device() -> None:
 
         nonce_ack = b64d(ack["nonce_b64"])
         aad_ack = b64d(ack["aad_b64"])
-        ct_ack = b64d(ack["ciphertext_b64"])
+        ciphertext_ack = b64d(ack["ciphertext_b64"])
 
         expected_nonce_ack = recv_state.next_nonce()
         if not hmac.compare_digest(nonce_ack, expected_nonce_ack):
             raise ValueError("[device] Nonce mismatch in session_ack.")
 
-        pt_ack = aead_decrypt(session_key, nonce_ack, ct_ack, aad_ack)
+        plaintext_ack = aead_decrypt(
+            traffic.server_to_device_key,
+            nonce_ack,
+            ciphertext_ack,
+            aad_ack,
+        )
         print(
             "[device] Session ack decrypted: "
-            f"{pt_ack.decode('utf-8', errors='replace')}"
+            f"{plaintext_ack.decode('utf-8', errors='replace')}"
         )
 
-        msg = "temperature=23.7C; humidity=41%"
+        message = "temperature=23.7C; humidity=41%"
         aad = b"app-data|device->server"
         nonce = send_state.next_nonce()
-        ct_msg = aead_encrypt(
-            session_key, nonce, msg.encode("utf-8"), aad
+        encrypted_message = aead_encrypt(
+            traffic.device_to_server_key,
+            nonce,
+            message.encode("utf-8"),
+            aad,
         )
 
         send_frame(
@@ -150,18 +148,20 @@ def run_device() -> None:
                 "type": "data",
                 "nonce_b64": b64e(nonce),
                 "aad_b64": b64e(aad),
-                "ciphertext_b64": b64e(ct_msg),
+                "ciphertext_b64": b64e(encrypted_message),
             },
         )
         print("[device] Encrypted message sent.")
 
-        resp = recv_frame(s)
-        if resp.get("type") != "data":
-            raise ValueError(f"Unexpected message type: {resp.get('type')}")
+        response = recv_frame(s)
+        if response.get("type") != "data":
+            raise ValueError(
+                f"Unexpected message type: {response.get('type')}"
+            )
 
-        nonce_in = b64d(resp["nonce_b64"])
-        aad_in = b64d(resp["aad_b64"])
-        ct_in = b64d(resp["ciphertext_b64"])
+        nonce_in = b64d(response["nonce_b64"])
+        aad_in = b64d(response["aad_b64"])
+        ciphertext_in = b64d(response["ciphertext_b64"])
 
         expected_nonce_in = recv_state.next_nonce()
         if not hmac.compare_digest(nonce_in, expected_nonce_in):
@@ -170,10 +170,15 @@ def run_device() -> None:
                 "(possible replay/out-of-order)."
             )
 
-        pt_in = aead_decrypt(session_key, nonce_in, ct_in, aad_in)
+        plaintext_in = aead_decrypt(
+            traffic.server_to_device_key,
+            nonce_in,
+            ciphertext_in,
+            aad_in,
+        )
         print(
             "[device] Decrypted server response: "
-            f"{pt_in.decode('utf-8', errors='replace')}"
+            f"{plaintext_in.decode('utf-8', errors='replace')}"
         )
         print("[device] Done.")
 

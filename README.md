@@ -1,118 +1,106 @@
-# Post-Quantum Secure Communication for IoT (ML-KEM-768 + AES-GCM)
+# Post-Quantum Secure Communication for IoT
 
 ## Overview
-This repository demonstrates a practical **post-quantum secure channel** between a simulated IoT device and a server.
-The design is **hybrid**:
-- Post-quantum cryptography (PQC) is used for **key establishment** (ML-KEM-768).
-- Symmetric cryptography is used for **data protection** (AES-GCM AEAD).
 
-The goal is an industry-oriented, deployable architecture that is **quantum-resistant** for long-lived IoT deployments.
+This repository is a research and educational reference implementation of an
+authenticated post-quantum secure channel between a simulated IoT device and a
+server.
 
----
+- **ML-KEM-768** establishes a shared secret.
+- **ML-DSA-65** authenticates the server using an out-of-band pinned key.
+- **HKDF-SHA-256** binds traffic secrets to the authenticated transcript.
+- **AES-256-GCM** protects application data.
 
-## Threat Model (High Level)
-We assume:
-- An attacker can eavesdrop, replay, and tamper with traffic (Dolev–Yao style network control).
-- Devices are resource-constrained and may operate for years.
-- We aim to mitigate:
-  - Passive interception (confidentiality)
-  - Active tampering (integrity/authenticity)
-  - Replay attacks (nonces / session rules)
-  - “Store now, decrypt later” risk (PQC handshake)
+The project is a prototype and is not a production replacement for TLS.
 
-Out of scope (first iteration):
-- Physical compromise of the device
-- Side-channel resistance (timing/power)
-- PKI / certificate lifecycle (can be added later)
+## Threat model
 
-See: `docs/threat_model.md`.
+The network attacker may observe, inject, modify, delete, and replay packets.
+The design targets confidentiality, integrity, server authentication,
+transcript binding, replay detection, and resistance to store-now-decrypt-later
+attacks.
 
----
+Physical compromise, side channels, secure boot, device authentication, and
+the full identity lifecycle remain outside the current scope.
 
-## Protocol Design
-### Handshake (Key Establishment)
-1. Server generates ML-KEM keys:
-   - $(pk, sk) \\leftarrow \\text{ML-KEM.KeyGen}()$
-2. Server sends `pk` to device.
-3. Device encapsulates:
-   - $(ct, ss) \\leftarrow \\text{ML-KEM.Encap}(pk)$
-4. Device sends `ct` to server.
-5. Server decapsulates:
-   - $ss \\leftarrow \\text{ML-KEM.Decap}(sk, ct)$
-6. Before encapsulation, the device verifies an **ML-DSA-65 signature** over the
-   canonical server transcript using a public identity key provisioned out of band.
-7. Both derive a session key bound to the full handshake transcript:
-   - $K \\leftarrow \\text{HKDF}(ss, \\text{salt}, \\text{transcript-hash})$
+See [docs/threat_model.md](docs/threat_model.md).
 
-### Secure Data Channel
-Application messages use AEAD:
-- $\\text{ciphertext} \\leftarrow \\text{AES-GCM.Enc}(K, nonce, plaintext, aad)$
+## Protocol v2
 
-`nonce` uniqueness is enforced per session.
+1. The server creates an ephemeral ML-KEM-768 key pair.
+2. It signs the canonical server transcript with ML-DSA-65.
+3. The device verifies the signature using its provisioned public key.
+4. The device encapsulates only after successful authentication.
+5. Both peers bind the full transcript to HKDF-SHA-256.
+6. They derive independent AES-256-GCM keys and nonce bases for:
+   - device to server;
+   - server to device.
+7. Per-direction 64-bit counters provide unique 96-bit nonces and fail closed
+   before wraparound.
 
-See: `docs/protocol.md`.
+See [docs/protocol.md](docs/protocol.md).
 
----
+## Run with Docker
 
-## Tech Stack
-- Python (reference implementation)
-- PQC library (ML-KEM-768)
-- AES-GCM (AEAD)
-- HKDF (key derivation)
-- Simple client/server transport (TCP) for demonstration
+Generate the server identity once:
 
----
+```bash
+mkdir -p secrets
+docker build -t pqc-iot-secure .
+docker run --rm -v "$PWD/secrets:/app/secrets" \
+  pqc-iot-secure python -m scripts.generate_server_identity
+```
 
-## Repository Structure
-- `src/server/server_app.py` : server endpoint, Kyber keygen, session handling
-- `src/device/device_client.py`: device simulation, Kyber encapsulation, encrypted messaging
-- `src/common/*` : crypto utilities (HKDF, AEAD helpers, message framing)
-- `docs/` : threat model and protocol documentation
-- `tests/` : small unit tests for KDF/AEAD
+Start the server:
 
----
+```bash
+docker compose up --build server
+```
 
-## How to Run (Planned)
-1. Install dependencies:
-   - `pip install -r requirements.txt`
-2. Generate the server identity once:
-   - `python -m scripts.generate_server_identity`
-   - The private key is created with mode `0600` and must never be committed.
-3. Start server:
-   - `python -m src.server.server_app`
-4. Start device client:
-   - `python -m src.device.device_client`
-5. Observe:
-   - ML-KEM handshake
-   - Derived session key (printed as hash / truncated)
-   - AES-GCM encrypted messages
+In a second terminal, run the simulated device:
 
----
+```bash
+docker compose run --rm --no-deps device
+```
 
-## Security Notes
-- The server handshake is authenticated with ML-DSA-65.
-- The device trusts only the provisioned server identity public key.
-- Identity keys are mounted read-only and excluded from Git and Docker image layers.
-- Session key material is never logged directly (only hashes/truncations for demo).
-- Nonce reuse is prevented (per-session counter).
-- This is a demo; production hardening requires:
-  - secure key storage
-  - authenticated distribution of server public key (PKI / pinning)
-  - robust error handling and rate limiting
+Run the test suite:
 
----
+```bash
+docker run --rm pqc-iot-secure pytest -v
+```
+
+## Security notes
+
+- The private ML-DSA identity key is excluded from Git and image layers.
+- Docker mounts identity material read-only.
+- Raw shared secrets and traffic keys are never logged.
+- Protocol v2 is intentionally incompatible with v1.
+- Secure provisioning of the pinned public key remains an operational
+  requirement.
+
+## Repository structure
+
+- `src/server/`: authenticated server endpoint.
+- `src/device/`: simulated IoT device.
+- `src/common/`: framing, transcript, HKDF, AEAD, and identity utilities.
+- `scripts/`: identity provisioning utilities.
+- `tests/`: interoperability and negative security tests.
+- `docs/`: protocol and threat-model documentation.
 
 ## Roadmap
-- [x] Implement ML-KEM-768 handshake
-- [ ] Implement HKDF key derivation
-- [ ] Implement AES-GCM secure channel
-- [ ] Add replay protection and session IDs
-- [ ] Add unit tests and negative tests
-- [x] Authenticate the server with a pinned ML-DSA-65 identity key
-- [ ] Add device authentication and identity lifecycle management
-- [ ] Add metrics: latency + message overhead
 
----
+- [x] ML-KEM-768 key establishment
+- [x] ML-DSA-65 server authentication
+- [x] Authenticated transcript binding
+- [x] Directional traffic keys and nonce bases
+- [x] AES-256-GCM encrypted data channel
+- [x] Negative cryptographic tests
+- [ ] Automated CI and dependency scanning
+- [ ] Input and network hardening
+- [ ] Reproducible IoT benchmarks
+- [ ] Device authentication and identity lifecycle management
 
 ## License
-CHOKRI
+
+A formal license will be selected during the repository governance phase.
+Until then, no permission is granted beyond rights provided by applicable law.
