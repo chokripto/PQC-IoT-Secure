@@ -18,7 +18,6 @@ def _server_transcript(identity_public_key: bytes, salt: bytes) -> bytes:
         kem_public_key,
         os.urandom(16),
         salt,
-        os.urandom(4),
         identity_key_id(identity_public_key),
     )
 
@@ -38,7 +37,9 @@ def test_modified_transcript_is_rejected():
         public_key = signer.generate_keypair()
         transcript = _server_transcript(public_key, os.urandom(16))
         signature = signer.sign(transcript)
-        modified_transcript = transcript[:-1] + bytes([transcript[-1] ^ 1])
+        modified_transcript = transcript[:-1] + bytes(
+            [transcript[-1] ^ 1]
+        )
 
     with oqs.Signature(SIGNATURE_ALG) as verifier:
         assert not verifier.verify(
@@ -51,7 +52,9 @@ def test_modified_signature_is_rejected():
         public_key = signer.generate_keypair()
         transcript = _server_transcript(public_key, os.urandom(16))
         signature = signer.sign(transcript)
-        modified_signature = signature[:-1] + bytes([signature[-1] ^ 1])
+        modified_signature = signature[:-1] + bytes(
+            [signature[-1] ^ 1]
+        )
 
     with oqs.Signature(SIGNATURE_ALG) as verifier:
         assert not verifier.verify(
