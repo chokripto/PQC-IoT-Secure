@@ -33,9 +33,9 @@ class DeviceRecord:
 
 
 def validate_device_id(device_id: str) -> str:
-    if not isinstance(device_id, str) or not _DEVICE_ID_PATTERN.fullmatch(
-        device_id
-    ):
+    if not isinstance(device_id, str):
+        raise TypeError("device_id must be a string")
+    if not _DEVICE_ID_PATTERN.fullmatch(device_id):
         raise ValueError(
             "device_id must match [A-Za-z0-9][A-Za-z0-9._-]{0,63}"
         )
@@ -44,7 +44,7 @@ def validate_device_id(device_id: str) -> str:
 
 def _parse_record(value: Any) -> DeviceRecord:
     if not isinstance(value, dict):
-        raise ValueError("Each registry device must be an object")
+        raise TypeError("Each registry device must be an object")
     expected = {
         "device_id",
         "status",
@@ -86,10 +86,9 @@ def _parse_record(value: Any) -> DeviceRecord:
 
 
 def parse_device_registry(document: Any) -> dict[str, DeviceRecord]:
-    if not isinstance(document, dict) or set(document) != {
-        "schema_version",
-        "devices",
-    }:
+    if not isinstance(document, dict):
+        raise TypeError("Device registry must be an object")
+    if set(document) != {"schema_version", "devices"}:
         raise ValueError("Device registry has an invalid top-level schema")
     if document["schema_version"] != REGISTRY_SCHEMA_VERSION:
         raise ValueError("Unsupported device registry schema version")
