@@ -1,0 +1,1 @@
+"""Simulated IoT device peer."""
