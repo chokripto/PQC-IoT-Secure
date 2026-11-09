@@ -35,7 +35,7 @@ MAX_ITERATIONS = 10_000
 PAYLOAD = b"temperature=23.7C; humidity=41%"
 AAD = b"app-data|device->server"
 SESSION_ID = b"benchmark-run-01"
-SALT = b"benchmark-salt!"
+SALT = b"benchmark-salt!!"
 CONTEXT = b"pqc-iot-benchmark-context-v1"
 
 
