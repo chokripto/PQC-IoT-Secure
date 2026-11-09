@@ -7,7 +7,6 @@ from src.common.crypto_utils import (
     NonceState,
     aead_decrypt,
     aead_encrypt,
-    b64d,
     b64e,
     short_fingerprint,
 )
@@ -24,9 +23,15 @@ from src.common.protocol import (
     handshake_transcript_hash,
     identity_key_id,
 )
+from src.common.validation import (
+    validate_encrypted_message,
+    validate_server_hello,
+)
 
 HOST = "server"
 PORT = 9000
+CONNECT_TIMEOUT_SECONDS = 5
+IO_TIMEOUT_SECONDS = 10
 
 
 def run_device() -> None:
@@ -34,29 +39,19 @@ def run_device() -> None:
     pinned_key_id = identity_key_id(pinned_identity_key)
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(CONNECT_TIMEOUT_SECONDS)
         s.connect((HOST, PORT))
+        s.settimeout(IO_TIMEOUT_SECONDS)
         print(f"[device] Connected to {HOST}:{PORT}")
 
         hello = recv_frame(s)
-        if hello.get("type") != "server_hello":
-            raise ValueError(f"Unexpected message type: {hello.get('type')}")
-        if hello.get("protocol_version") != PROTOCOL_VERSION:
-            raise ValueError("Unsupported protocol version")
-        if hello.get("kem_alg") != KEM_ALG:
-            raise ValueError(
-                f"Unsupported KEM: {hello.get('kem_alg')!r}; expected {KEM_ALG}"
-            )
-        if hello.get("identity_alg") != SIGNATURE_ALG:
-            raise ValueError(
-                "Unsupported identity algorithm: "
-                f"{hello.get('identity_alg')!r}"
-            )
-
-        kem_public_key = b64d(hello["pk_b64"])
-        session_id = b64d(hello["session_id_b64"])
-        salt = b64d(hello["salt_b64"])
-        received_key_id = b64d(hello["identity_key_id_b64"])
-        server_signature = b64d(hello["signature_b64"])
+        (
+            kem_public_key,
+            session_id,
+            salt,
+            received_key_id,
+            server_signature,
+        ) = validate_server_hello(hello)
 
         if not hmac.compare_digest(received_key_id, pinned_key_id):
             raise ValueError(
@@ -109,12 +104,9 @@ def run_device() -> None:
         recv_state = NonceState(traffic.server_to_device_nonce_base)
 
         ack = recv_frame(s)
-        if ack.get("type") != "session_ack":
-            raise ValueError(f"Unexpected message type: {ack.get('type')}")
-
-        nonce_ack = b64d(ack["nonce_b64"])
-        aad_ack = b64d(ack["aad_b64"])
-        ciphertext_ack = b64d(ack["ciphertext_b64"])
+        nonce_ack, aad_ack, ciphertext_ack = validate_encrypted_message(
+            ack, "session_ack"
+        )
 
         expected_nonce_ack = recv_state.next_nonce()
         if not hmac.compare_digest(nonce_ack, expected_nonce_ack):
@@ -153,14 +145,9 @@ def run_device() -> None:
         print("[device] Encrypted message sent.")
 
         response = recv_frame(s)
-        if response.get("type") != "data":
-            raise ValueError(
-                f"Unexpected message type: {response.get('type')}"
-            )
-
-        nonce_in = b64d(response["nonce_b64"])
-        aad_in = b64d(response["aad_b64"])
-        ciphertext_in = b64d(response["ciphertext_b64"])
+        nonce_in, aad_in, ciphertext_in = validate_encrypted_message(
+            response, "data"
+        )
 
         expected_nonce_in = recv_state.next_nonce()
         if not hmac.compare_digest(nonce_in, expected_nonce_in):
