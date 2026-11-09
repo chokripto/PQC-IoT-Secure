@@ -1,6 +1,7 @@
 FROM python:3.12-slim
 
 ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
     OQS_INSTALL_PATH=/usr/local \
     PYOQS_VERSION=0.16.0
 WORKDIR /app
