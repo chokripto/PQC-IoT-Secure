@@ -8,8 +8,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import oqs
+
 from src.common.crypto_utils import b64d
-from src.common.protocol import identity_key_id
+from src.common.protocol import SIGNATURE_ALG, identity_key_id
 
 REGISTRY_SCHEMA_VERSION = 1
 DEVICE_PUBLIC_KEY_BYTES = 1952
@@ -132,3 +134,14 @@ def authorize_device(
     if not hmac.compare_digest(record.key_id, presented_key_id):
         raise DeviceAuthorizationError("Device key ID is not current")
     return record
+
+
+def verify_device_signature(
+    record: DeviceRecord,
+    transcript: bytes,
+    signature: bytes,
+) -> None:
+    """Verify proof of possession for the authorized device key."""
+    with oqs.Signature(SIGNATURE_ALG) as verifier:
+        if not verifier.verify(transcript, signature, record.public_key):
+            raise DeviceAuthorizationError("Invalid device identity signature")
