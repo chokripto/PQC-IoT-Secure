@@ -1,4 +1,5 @@
 import base64
+import binascii
 import hashlib
 from dataclasses import dataclass
 
@@ -10,7 +11,12 @@ def b64e(b: bytes) -> str:
 
 
 def b64d(s: str) -> bytes:
-    return base64.b64decode(s.encode("ascii"))
+    if not isinstance(s, str):
+        raise ValueError("Base64 value must be a string")
+    try:
+        return base64.b64decode(s.encode("ascii"), validate=True)
+    except (UnicodeEncodeError, binascii.Error) as exc:
+        raise ValueError("Invalid Base64 encoding") from exc
 
 
 def short_fingerprint(data: bytes, n: int = 10) -> str:
