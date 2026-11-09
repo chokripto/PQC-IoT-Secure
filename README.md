@@ -71,6 +71,19 @@ Run the test suite:
 docker run --rm pqc-iot-secure pytest -v
 ```
 
+Run the reproducible cryptographic benchmark:
+
+```bash
+mkdir -p results
+docker run --rm -v "$PWD/results:/results" pqc-iot-secure \
+  python -m scripts.benchmark_iot \
+  --iterations 100 --warmup 10 \
+  --output /results/benchmark.json
+```
+
+See [docs/benchmarks.md](docs/benchmarks.md) for PowerShell instructions,
+the measurement methodology, and comparison limitations.
+
 ## Security notes
 
 - The private ML-DSA identity key is excluded from Git and image layers.
@@ -102,7 +115,7 @@ docker run --rm pqc-iot-secure pytest -v
 - [x] Negative cryptographic tests
 - [x] Automated CI and dependency scanning
 - [x] Input and network hardening
-- [ ] Reproducible IoT benchmarks
+- [x] Reproducible IoT benchmarks
 - [ ] Device authentication and identity lifecycle management
 
 ## License
