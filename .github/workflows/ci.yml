@@ -56,5 +56,12 @@ jobs:
       - name: Run cryptographic test suite
         run: docker run --rm pqc-iot-secure:ci pytest -v
 
+      - name: Smoke-test reproducible benchmarks
+        run: |
+          docker run --rm pqc-iot-secure:ci \
+            python -m scripts.benchmark_iot \
+            --iterations 3 --warmup 1 \
+            --output /tmp/benchmark.json
+
       - name: Run authenticated end-to-end exchange
         run: bash scripts/ci_integration.sh pqc-iot-secure:ci
