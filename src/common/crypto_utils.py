@@ -12,7 +12,7 @@ def b64e(b: bytes) -> str:
 
 def b64d(s: str) -> bytes:
     if not isinstance(s, str):
-        raise ValueError("Base64 value must be a string")
+        raise TypeError("Base64 value must be a string")
     try:
         return base64.b64decode(s.encode("ascii"), validate=True)
     except (UnicodeEncodeError, binascii.Error) as exc:
