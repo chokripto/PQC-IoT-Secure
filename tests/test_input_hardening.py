@@ -9,7 +9,7 @@ from src.common.message import MAX_FRAME_SIZE, ProtocolError, recv_frame
 from src.common.protocol import KEM_ALG
 from src.common.validation import (
     ML_KEM_768_CIPHERTEXT_BYTES,
-    validate_client_kem,
+    validate_client_auth,
     validate_encrypted_message,
 )
 
@@ -56,25 +56,30 @@ def test_socket_timeout_fails_closed():
         receiver.close()
 
 
-def test_client_kem_rejects_unknown_fields():
-    message = {
-        "type": "client_kem",
+def _valid_client_auth() -> dict[str, object]:
+    return {
+        "type": "client_auth",
         "kem_alg": KEM_ALG,
+        "identity_alg": "ML-DSA-65",
+        "device_id": "device-001",
+        "device_key_id_b64": b64e(b"k" * 32),
         "ct_b64": b64e(b"x" * ML_KEM_768_CIPHERTEXT_BYTES),
-        "unexpected": "value",
+        "signature_b64": b64e(b"s" * 64),
     }
+
+
+def test_client_auth_rejects_unknown_fields():
+    message = _valid_client_auth()
+    message["unexpected"] = "value"
     with pytest.raises(ProtocolError, match="unknown"):
-        validate_client_kem(message)
+        validate_client_auth(message)
 
 
-def test_client_kem_rejects_invalid_ciphertext_length():
-    message = {
-        "type": "client_kem",
-        "kem_alg": KEM_ALG,
-        "ct_b64": b64e(b"short"),
-    }
+def test_client_auth_rejects_invalid_ciphertext_length():
+    message = _valid_client_auth()
+    message["ct_b64"] = b64e(b"short")
     with pytest.raises(ProtocolError, match="1088 bytes"):
-        validate_client_kem(message)
+        validate_client_auth(message)
 
 
 def test_encrypted_message_rejects_invalid_nonce_and_oversized_aad():
