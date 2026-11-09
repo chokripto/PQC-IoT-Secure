@@ -1,4 +1,4 @@
-"""Provisioned ML-DSA server identity key loading."""
+"""Provisioned ML-DSA peer identity key loading."""
 
 import base64
 import binascii
@@ -68,3 +68,18 @@ def load_pinned_server_public_key() -> bytes:
         file_env="PINNED_SERVER_IDENTITY_PUBLIC_KEY_FILE",
         default_file="secrets/server_identity_public.key",
     )
+
+
+def load_device_identity_keypair() -> tuple[bytes, bytes]:
+    """Load the device's provisioned ML-DSA public and secret keys."""
+    public_key = load_key_material(
+        base64_env="DEVICE_IDENTITY_PUBLIC_KEY_B64",
+        file_env="DEVICE_IDENTITY_PUBLIC_KEY_FILE",
+        default_file="secrets/device-001/device_identity_public.key",
+    )
+    secret_key = load_key_material(
+        base64_env="DEVICE_IDENTITY_SECRET_KEY_B64",
+        file_env="DEVICE_IDENTITY_SECRET_KEY_FILE",
+        default_file="secrets/device-001/device_identity_secret.key",
+    )
+    return public_key, secret_key

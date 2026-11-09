@@ -1,58 +1,67 @@
-# Protocol (v2)
+# Protocol (v3)
 
-## Trust anchor
+## Trust anchors
 
-The server owns a long-term ML-DSA-65 identity key pair. The private key is
-available only to the server. The corresponding public key is provisioned on
-the device through a trusted out-of-band process before the first connection.
-A public key received only through the network is never trusted.
+The server owns a long-term ML-DSA-65 identity key pair. Its public key is
+provisioned on each device through a trusted out-of-band process.
 
-## Authenticated handshake
+Each device owns a distinct ML-DSA-65 identity key pair. Its private key remains
+on the device. The server stores the corresponding public key, key identifier,
+generation, and lifecycle status in a protected registry.
+
+## Mutually authenticated handshake
 
 1. The server generates an ephemeral ML-KEM-768 key pair.
-2. The server creates a canonical, length-prefixed transcript containing:
-   - protocol version;
-   - KEM and signature algorithm identifiers;
-   - identity key identifier;
-   - ephemeral ML-KEM public key;
-   - session ID and HKDF salt.
-3. The server signs that transcript with ML-DSA-65.
-4. The device verifies that the advertised key identifier matches its pinned
-   public key and verifies the ML-DSA signature.
-5. Only after successful authentication, the device encapsulates to the
-   verified ML-KEM public key.
-6. The device sends the ML-KEM ciphertext.
-7. Both peers hash the server and client transcript contributions.
-8. Both peers use HKDF-SHA-256 with distinct labels to derive:
-   - the AES-256-GCM key for device-to-server traffic;
-   - the AES-256-GCM key for server-to-device traffic;
-   - the 32-bit nonce base for device-to-server traffic;
-   - the 32-bit nonce base for server-to-device traffic.
+2. The server signs a canonical, length-prefixed transcript containing the
+   protocol version, algorithm identifiers, server identity key identifier,
+   ephemeral ML-KEM key, session ID, and HKDF salt.
+3. The device verifies the server key identifier and ML-DSA-65 signature
+   against its pinned server public key.
+4. Only after server authentication, the device encapsulates to ML-KEM-768.
+5. The device builds a canonical client-auth transcript containing:
+   - protocol version and algorithm identifiers;
+   - device ID and current device key identifier;
+   - ML-KEM ciphertext;
+   - SHA-256 hash of the complete server transcript.
+6. The device signs that transcript with its provisioned ML-DSA-65 key.
+7. The server validates the exact message schema, looks up the device, requires
+   an `active` status and current key identifier, then verifies the signature.
+8. Only after device authentication, the server decapsulates ML-KEM.
+9. Both peers hash both canonical transcript contributions and bind the result
+   to HKDF-SHA-256.
+10. HKDF derives independent AES-256-GCM keys and nonce bases for both traffic
+    directions.
+11. The encrypted session acknowledgement provides key confirmation.
 
-A modified server parameter, ML-KEM key, ciphertext, algorithm identifier,
-session identifier, or salt invalidates the server signature or changes all
-transcript-bound traffic secrets.
+A change to either identity, any algorithm identifier, the ML-KEM key or
+ciphertext, session ID, salt, or device ID invalidates a signature or changes
+all transcript-bound traffic secrets.
 
 ## Data channel
 
-- AES-256-GCM is used as AEAD for application data.
-- Each direction has an independent key and nonce base.
-- A nonce is 96 bits: a derived 32-bit base followed by a 64-bit counter.
-- Counters start at zero, increment before first use, and never wrap.
-- Counter exhaustion closes the cryptographic context instead of reusing a
-  nonce.
-- A key from one direction cannot authenticate ciphertext from the opposite
-  direction.
-- The encrypted session acknowledgement provides key confirmation.
+- AES-256-GCM protects application data.
+- Each direction has an independent key and 32-bit nonce base.
+- A nonce is the derived base followed by a 64-bit counter.
+- Counters increment before use and fail closed before wraparound.
+- A key from one direction cannot authenticate ciphertext from the other.
+
+## Lifecycle enforcement
+
+The server accepts only an enrolled, active device generation. Rotation replaces
+the trusted public key and increments the generation. Revocation changes the
+record status and blocks new sessions. The demo loads its registry at startup,
+so lifecycle changes require a server restart.
+
+See [device_identity.md](device_identity.md).
 
 ## Version boundary
 
-Protocol v2 is intentionally incompatible with v1. Version 1 transmitted
-random nonce prefixes and used one AES-GCM key for both directions. Version 2
-derives role-separated keys and nonce bases from the authenticated handshake.
+Protocol v3 is intentionally incompatible with v2. Version 2 authenticated only
+the server and used an unsigned `client_kem` contribution. Version 3 replaces
+it with a signed `client_auth` contribution bound to the server transcript.
 
-## Current identity boundary
+## Limitations
 
-Version 2 authenticates the server to the device. Device authentication,
-identity rotation, revocation, and recovery are separate lifecycle controls
-that remain to be implemented.
+This is a research prototype, not a replacement for TLS or a fleet identity
+platform. It does not provide certificate chains, remote attestation, secure
+boot, hardware-backed key isolation, distributed revocation, or recovery.

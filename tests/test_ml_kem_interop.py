@@ -5,7 +5,7 @@ import oqs
 from src.common.hkdf import derive_traffic_secrets
 from src.common.protocol import (
     KEM_ALG,
-    build_client_kem_transcript,
+    build_client_auth_transcript,
     build_info,
     build_server_hello_transcript,
     handshake_transcript_hash,
@@ -34,7 +34,14 @@ def test_ml_kem_interoperability_and_directional_traffic_secrets():
 
         server_secret = server_kem.decap_secret(ciphertext)
 
-    client_transcript = build_client_kem_transcript(ciphertext)
+    device_id = "device-001"
+    device_key_id = identity_key_id(os.urandom(1952))
+    client_transcript = build_client_auth_transcript(
+        ciphertext,
+        device_id,
+        device_key_id,
+        server_transcript,
+    )
     transcript_hash = handshake_transcript_hash(
         server_transcript, client_transcript
     )

@@ -91,16 +91,37 @@ def validate_server_hello(
     )
 
 
-def validate_client_kem(message: dict[str, Any]) -> bytes:
+def validate_client_auth(
+    message: dict[str, Any],
+) -> tuple[bytes, str, bytes, bytes]:
     _require_schema(
         message,
-        "client_kem",
-        {"kem_alg": str, "ct_b64": str},
+        "client_auth",
+        {
+            "kem_alg": str,
+            "identity_alg": str,
+            "device_id": str,
+            "device_key_id_b64": str,
+            "ct_b64": str,
+            "signature_b64": str,
+        },
     )
     if message["kem_alg"] != KEM_ALG:
         raise ProtocolError("KEM algorithm mismatch")
-    return _decode_exact(
-        message, "ct_b64", ML_KEM_768_CIPHERTEXT_BYTES
+    if message["identity_alg"] != SIGNATURE_ALG:
+        raise ProtocolError("Unsupported device identity algorithm")
+    device_id = message["device_id"]
+    if not device_id or len(device_id.encode("utf-8")) > 64:
+        raise ProtocolError("Device ID must contain 1..64 UTF-8 bytes")
+    return (
+        _decode_exact(message, "ct_b64", ML_KEM_768_CIPHERTEXT_BYTES),
+        device_id,
+        _decode_exact(
+            message, "device_key_id_b64", IDENTITY_KEY_ID_BYTES
+        ),
+        _decode_bounded(
+            message, "signature_b64", 1, MAX_SIGNATURE_BYTES
+        ),
     )
 
 

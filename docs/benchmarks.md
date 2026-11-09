@@ -1,6 +1,6 @@
 # Reproducible IoT benchmarks
 
-The benchmark harness measures the cryptographic work used by protocol v2. It
+The benchmark harness measures the cryptographic work used by protocol v3. It
 is intended for repeatable engineering comparisons, not marketing claims or a
 substitute for measurements on the target microcontroller.
 
@@ -10,7 +10,7 @@ substitute for measurements on the target microcontroller.
 - ML-DSA-65 key generation, signing, and verification;
 - HKDF-SHA-256 directional traffic-secret derivation;
 - AES-256-GCM encryption and decryption of the fixed telemetry payload;
-- the complete protocol-v2 cryptographic handshake, excluding network I/O.
+- the complete protocol-v3 mutually authenticated cryptographic handshake, excluding network I/O.
 
 Each operation is warmed up before measurement. Garbage collection is disabled
 only during the timed samples. Every sample uses

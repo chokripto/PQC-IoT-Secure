@@ -9,7 +9,14 @@ secrets_dir="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/pqc-iot-secrets-${GITHUB_RUN_ID:-lo
 cleanup() {
   docker rm -f "$server_container" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
-  rm -rf "$secrets_dir"
+  if [[ -d "$secrets_dir" ]]; then
+    docker run --rm \
+      --volume "$secrets_dir:/cleanup" \
+      "$image" \
+      sh -c 'find /cleanup -mindepth 1 -delete' \
+      >/dev/null 2>&1 || true
+    rm -rf "$secrets_dir"
+  fi
 }
 trap cleanup EXIT
 
@@ -21,14 +28,20 @@ docker run --rm \
   "$image" \
   python -m scripts.generate_server_identity
 
+docker run --rm \
+  --volume "$secrets_dir:/app/secrets" \
+  "$image" \
+  python -m scripts.manage_device_identity enroll \
+    --device-id device-001
+
 docker run --detach \
   --name "$server_container" \
   --network "$network" \
   --network-alias server \
   --env SERVER_IDENTITY_PUBLIC_KEY_FILE=/run/secrets/server_identity_public.key \
   --env SERVER_IDENTITY_SECRET_KEY_FILE=/run/secrets/server_identity_secret.key \
-  --volume "$secrets_dir/server_identity_public.key:/run/secrets/server_identity_public.key:ro" \
-  --volume "$secrets_dir/server_identity_secret.key:/run/secrets/server_identity_secret.key:ro" \
+  --env DEVICE_REGISTRY_FILE=/run/secrets/device_registry.json \
+  --volume "$secrets_dir:/run/secrets:ro" \
   "$image" >/dev/null
 
 for _ in $(seq 1 30); do
@@ -51,7 +64,10 @@ fi
 docker run --rm \
   --network "$network" \
   --env PINNED_SERVER_IDENTITY_PUBLIC_KEY_FILE=/run/secrets/server_identity_public.key \
-  --volume "$secrets_dir/server_identity_public.key:/run/secrets/server_identity_public.key:ro" \
+  --env DEVICE_ID=device-001 \
+  --env DEVICE_IDENTITY_PUBLIC_KEY_FILE=/run/secrets/device-001/device_identity_public.key \
+  --env DEVICE_IDENTITY_SECRET_KEY_FILE=/run/secrets/device-001/device_identity_secret.key \
+  --volume "$secrets_dir:/run/secrets:ro" \
   "$image" \
   python -m src.device.device_client
 

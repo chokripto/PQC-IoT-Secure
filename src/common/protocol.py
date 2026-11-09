@@ -4,11 +4,11 @@ import hashlib
 
 KEM_ALG = "ML-KEM-768"
 SIGNATURE_ALG = "ML-DSA-65"
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 3
 
-_SERVER_HELLO_LABEL = b"pqc-iot/server-hello/v2"
-_CLIENT_KEM_LABEL = b"pqc-iot/client-kem/v2"
-_HKDF_LABEL = b"pqc-iot/traffic-context/v2"
+_SERVER_HELLO_LABEL = b"pqc-iot/server-hello/v3"
+_CLIENT_AUTH_LABEL = b"pqc-iot/client-auth/v3"
+_HKDF_LABEL = b"pqc-iot/traffic-context/v3"
 
 
 def _encode_fields(label: bytes, *fields: bytes) -> bytes:
@@ -43,22 +43,32 @@ def build_server_hello_transcript(
     )
 
 
-def build_client_kem_transcript(ciphertext: bytes) -> bytes:
-    """Canonical bytes contributed by the device to the handshake."""
+def build_client_auth_transcript(
+    ciphertext: bytes,
+    device_id: str,
+    device_key_identifier: bytes,
+    server_hello_transcript: bytes,
+) -> bytes:
+    """Canonical device-authentication contribution to the handshake."""
     return _encode_fields(
-        _CLIENT_KEM_LABEL,
+        _CLIENT_AUTH_LABEL,
+        PROTOCOL_VERSION.to_bytes(2, "big"),
         KEM_ALG.encode("ascii"),
+        SIGNATURE_ALG.encode("ascii"),
+        device_id.encode("utf-8"),
+        device_key_identifier,
         ciphertext,
+        hashlib.sha256(server_hello_transcript).digest(),
     )
 
 
 def handshake_transcript_hash(
     server_hello_transcript: bytes,
-    client_kem_transcript: bytes,
+    client_auth_transcript: bytes,
 ) -> bytes:
-    """Hash the complete handshake transcript for HKDF binding."""
+    """Hash the mutually authenticated handshake for HKDF binding."""
     return hashlib.sha256(
-        server_hello_transcript + client_kem_transcript
+        server_hello_transcript + client_auth_transcript
     ).digest()
 
 

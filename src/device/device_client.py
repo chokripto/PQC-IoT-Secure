@@ -1,4 +1,5 @@
 import hmac
+import os
 import socket
 
 import oqs
@@ -10,13 +11,17 @@ from src.common.crypto_utils import (
     b64e,
     short_fingerprint,
 )
+from src.common.device_registry import validate_device_id
 from src.common.hkdf import derive_traffic_secrets
-from src.common.identity import load_pinned_server_public_key
+from src.common.identity import (
+    load_device_identity_keypair,
+    load_pinned_server_public_key,
+)
 from src.common.message import recv_frame, send_frame
 from src.common.protocol import (
     KEM_ALG,
     SIGNATURE_ALG,
-    build_client_kem_transcript,
+    build_client_auth_transcript,
     build_info,
     build_server_hello_transcript,
     handshake_transcript_hash,
@@ -36,6 +41,9 @@ IO_TIMEOUT_SECONDS = 10
 def run_device() -> None:
     pinned_identity_key = load_pinned_server_public_key()
     pinned_key_id = identity_key_id(pinned_identity_key)
+    device_id = validate_device_id(os.getenv("DEVICE_ID", "device-001"))
+    device_public_key, device_secret_key = load_device_identity_keypair()
+    device_key_id = identity_key_id(device_public_key)
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.settimeout(CONNECT_TIMEOUT_SECONDS)
@@ -76,7 +84,26 @@ def run_device() -> None:
         with oqs.KeyEncapsulation(KEM_ALG) as kem:
             ciphertext, shared_secret = kem.encap_secret(kem_public_key)
 
-        client_transcript = build_client_kem_transcript(ciphertext)
+        client_transcript = build_client_auth_transcript(
+            ciphertext,
+            device_id,
+            device_key_id,
+            server_transcript,
+        )
+        with oqs.Signature(
+            SIGNATURE_ALG, device_secret_key
+        ) as device_signer:
+            device_signature = device_signer.sign(client_transcript)
+        with oqs.Signature(SIGNATURE_ALG) as local_verifier:
+            if not local_verifier.verify(
+                client_transcript,
+                device_signature,
+                device_public_key,
+            ):
+                raise ValueError(
+                    "Provisioned device public and private keys do not match"
+                )
+
         transcript_hash = handshake_transcript_hash(
             server_transcript, client_transcript
         )
@@ -84,7 +111,9 @@ def run_device() -> None:
         traffic = derive_traffic_secrets(shared_secret, salt, context)
 
         print("[device] Server identity authenticated.")
-        print(f"[device] identity_key_id={pinned_key_id.hex()[:20]}")
+        print(f"[device] server_key_id={pinned_key_id.hex()[:20]}")
+        print(f"[device] device_id={device_id}")
+        print(f"[device] device_key_id={device_key_id.hex()[:20]}")
         print(
             f"[device] transcript(fp)="
             f"{short_fingerprint(transcript_hash)}"
@@ -93,9 +122,13 @@ def run_device() -> None:
         send_frame(
             s,
             {
-                "type": "client_kem",
+                "type": "client_auth",
                 "kem_alg": KEM_ALG,
+                "identity_alg": SIGNATURE_ALG,
+                "device_id": device_id,
+                "device_key_id_b64": b64e(device_key_id),
                 "ct_b64": b64e(ciphertext),
+                "signature_b64": b64e(device_signature),
             },
         )
 

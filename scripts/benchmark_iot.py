@@ -21,7 +21,7 @@ from src.common.hkdf import derive_traffic_secrets
 from src.common.protocol import (
     KEM_ALG,
     SIGNATURE_ALG,
-    build_client_kem_transcript,
+    build_client_auth_transcript,
     build_info,
     build_server_hello_transcript,
     handshake_transcript_hash,
@@ -135,7 +135,12 @@ def run_benchmarks(iterations: int, warmup: int) -> dict[str, Any]:
                 )
                 signature = signer.sign(transcript)
 
-                with oqs.Signature(SIGNATURE_ALG) as verifier:
+                with (
+                    oqs.Signature(SIGNATURE_ALG) as verifier,
+                    oqs.Signature(SIGNATURE_ALG) as device_signer,
+                ):
+                    device_public_key = device_signer.generate_keypair()
+                    device_key_id = identity_key_id(device_public_key)
                     if not verifier.verify(
                         transcript, signature, identity_public_key
                     ):
@@ -229,8 +234,11 @@ def run_benchmarks(iterations: int, warmup: int) -> dict[str, Any]:
                         warmup,
                     )
 
-                    client_transcript = build_client_kem_transcript(
-                        kem_ciphertext
+                    client_transcript = build_client_auth_transcript(
+                        kem_ciphertext,
+                        "benchmark-device",
+                        device_key_id,
+                        transcript,
                     )
 
                     def complete_handshake() -> object:
@@ -254,7 +262,21 @@ def run_benchmarks(iterations: int, warmup: int) -> dict[str, Any]:
                         server_secret = server_kem.decap_secret(ciphertext)
                         if client_secret != server_secret:
                             raise RuntimeError("Handshake secrets differ")
-                        client_part = build_client_kem_transcript(ciphertext)
+                        client_part = build_client_auth_transcript(
+                            ciphertext,
+                            "benchmark-device",
+                            device_key_id,
+                            server_part,
+                        )
+                        device_signature = device_signer.sign(client_part)
+                        if not verifier.verify(
+                            client_part,
+                            device_signature,
+                            device_public_key,
+                        ):
+                            raise RuntimeError(
+                                "Device handshake signature failed"
+                            )
                         transcript_hash = handshake_transcript_hash(
                             server_part, client_part
                         )
@@ -264,7 +286,7 @@ def run_benchmarks(iterations: int, warmup: int) -> dict[str, Any]:
                             build_info(SESSION_ID, transcript_hash),
                         )
 
-                    timings["protocol_v2_crypto_handshake"] = measure(
+                    timings["protocol_v3_mutual_auth_crypto_handshake"] = measure(
                         complete_handshake,
                         iterations,
                         warmup,

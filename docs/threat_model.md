@@ -4,31 +4,36 @@
 
 - Passive eavesdropping on the network
 - Active modification, injection, deletion, and replay of packets
-- Server impersonation attempts
+- Server or device impersonation attempts
+- Use of an unknown, stale, or revoked device identity
 - “Store now, decrypt later” strategy
 
 ## Security goals
 
 - Confidentiality of IoT telemetry
 - Integrity and authenticity of application messages
-- Authentication of the provisioned server identity
-- Cryptographic binding of negotiated parameters to the session key
+- Mutual authentication of provisioned server and device identities
+- Proof of possession of the enrolled device private key
+- Binding of both identities and all negotiated parameters to session keys
+- Rejection of unknown, stale-key, and revoked devices
 - Replay resistance at the session level
-- Quantum-resistant key establishment and server authentication
+- Quantum-resistant key establishment and peer authentication
 
 ## Trust assumptions
 
-- The device receives the correct ML-DSA-65 public key through a trusted
-  provisioning process.
-- The server protects its ML-DSA private key from disclosure and unauthorized
-  use.
+- Server and device public keys are provisioned through trusted channels.
+- The server registry is protected from unauthorized modification.
+- Both peers protect their ML-DSA private keys.
+- Administrators restart the demo server after registry changes.
 - Randomness provided by the operating system is trustworthy.
-- The endpoint software and host operating systems are not already compromised.
+- Endpoint software and host operating systems are not compromised.
 
-## Out of scope (v1)
+## Out of scope
 
-- Device identity authentication
-- Identity key rotation and revocation
-- Physical compromise and hardware extraction
+- Physical compromise and hardware key extraction
 - Side-channel and fault-injection resistance
 - Secure boot, firmware update, and rollback protection
+- Remote attestation and hardware-backed device identity
+- Certificate-chain validation and automated ownership transfer
+- Distributed, real-time fleet revocation and recovery
+- Availability against volumetric denial-of-service attacks
