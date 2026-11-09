@@ -4,11 +4,11 @@ import socket
 import oqs
 
 from src.common.crypto_utils import (
+    NonceState,
     aead_decrypt,
     aead_encrypt,
     b64d,
     b64e,
-    NonceState,
     short_fingerprint,
 )
 from src.common.hkdf import derive_traffic_secrets
@@ -24,7 +24,6 @@ from src.common.protocol import (
     handshake_transcript_hash,
     identity_key_id,
 )
-
 
 HOST = "server"
 PORT = 9000
