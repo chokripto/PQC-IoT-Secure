@@ -11,8 +11,8 @@ from src.common.crypto_utils import (
     b64e,
     short_fingerprint,
 )
-from src.common.hkdf import derive_traffic_secrets
 from src.common.device_registry import validate_device_id
+from src.common.hkdf import derive_traffic_secrets
 from src.common.identity import (
     load_device_identity_keypair,
     load_pinned_server_public_key,
