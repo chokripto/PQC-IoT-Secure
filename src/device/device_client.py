@@ -25,7 +25,6 @@ from src.common.protocol import (
     identity_key_id,
 )
 
-
 HOST = "server"
 PORT = 9000
 
