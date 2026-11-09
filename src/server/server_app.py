@@ -1,15 +1,12 @@
 import hmac
 import os
 import socket
-from typing import Any
-
 import oqs
 
 from src.common.crypto_utils import (
     NonceState,
     aead_decrypt,
     aead_encrypt,
-    b64d,
     b64e,
     short_fingerprint,
 )
@@ -26,9 +23,15 @@ from src.common.protocol import (
     handshake_transcript_hash,
     identity_key_id,
 )
+from src.common.validation import (
+    validate_client_kem,
+    validate_encrypted_message,
+)
 
 HOST = "0.0.0.0"
 PORT = 9000
+CLIENT_TIMEOUT_SECONDS = 10
+LISTEN_BACKLOG = 16
 
 
 def run_server() -> None:
@@ -66,12 +69,14 @@ def run_server() -> None:
             kem_public_key = kem.generate_keypair()
 
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 s.bind((HOST, PORT))
-                s.listen(1)
+                s.listen(LISTEN_BACKLOG)
                 print(f"[server] Listening on {HOST}:{PORT}")
 
                 conn, addr = s.accept()
                 with conn:
+                    conn.settimeout(CLIENT_TIMEOUT_SECONDS)
                     print(f"[server] Connection from {addr}")
 
                     session_id = os.urandom(16)
@@ -103,18 +108,7 @@ def run_server() -> None:
                     )
 
                     message = recv_frame(conn)
-                    if message.get("type") != "client_kem":
-                        raise ValueError(
-                            "Unexpected message type: "
-                            f"{message.get('type')}"
-                        )
-                    if message.get("kem_alg") != KEM_ALG:
-                        raise ValueError(
-                            "KEM algorithm mismatch: "
-                            f"{message.get('kem_alg')!r}"
-                        )
-
-                    ciphertext = b64d(message["ct_b64"])
+                    ciphertext = validate_client_kem(message)
                     shared_secret = kem.decap_secret(ciphertext)
 
                     client_transcript = build_client_kem_transcript(
@@ -164,17 +158,9 @@ def run_server() -> None:
                         },
                     )
 
-                    data_message: dict[str, Any] = recv_frame(conn)
-                    if data_message.get("type") != "data":
-                        raise ValueError(
-                            "Unexpected message type: "
-                            f"{data_message.get('type')}"
-                        )
-
-                    nonce_in = b64d(data_message["nonce_b64"])
-                    aad_in = b64d(data_message["aad_b64"])
-                    ciphertext_in = b64d(
-                        data_message["ciphertext_b64"]
+                    data_message = recv_frame(conn)
+                    nonce_in, aad_in, ciphertext_in = (
+                        validate_encrypted_message(data_message, "data")
                     )
 
                     expected_nonce = recv_state.next_nonce()
