@@ -25,23 +25,24 @@ def test_rejects_oversized_frame_before_payload_read():
     sender, receiver = socket.socketpair()
     sender.sendall(struct.pack("!I", MAX_FRAME_SIZE + 1))
     sender.close()
-    with receiver:
-        with pytest.raises(ProtocolError, match="Invalid frame length"):
-            recv_frame(receiver)
+    with receiver, pytest.raises(
+        ProtocolError, match="Invalid frame length"
+    ):
+        recv_frame(receiver)
 
 
 @pytest.mark.parametrize("payload", [b"[]", b"not-json", b'{"x":NaN}'])
 def test_rejects_non_object_or_invalid_json(payload):
-    with _socket_frame(payload) as receiver:
-        with pytest.raises(ProtocolError):
-            recv_frame(receiver)
+    with _socket_frame(payload) as receiver, pytest.raises(ProtocolError):
+        recv_frame(receiver)
 
 
 def test_rejects_duplicate_json_fields():
     payload = b'{"type":"data","type":"client_kem"}'
-    with _socket_frame(payload) as receiver:
-        with pytest.raises(ProtocolError, match="Duplicate JSON field"):
-            recv_frame(receiver)
+    with _socket_frame(payload) as receiver, pytest.raises(
+        ProtocolError, match="Duplicate JSON field"
+    ):
+        recv_frame(receiver)
 
 
 def test_socket_timeout_fails_closed():
