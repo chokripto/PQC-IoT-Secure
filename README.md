@@ -77,6 +77,9 @@ docker run --rm pqc-iot-secure pytest -v
 - Docker mounts identity material read-only.
 - Raw shared secrets and traffic keys are never logged.
 - Protocol v2 is intentionally incompatible with v1.
+- Frames are capped at 64 KiB and must be strict UTF-8 JSON objects.
+- Duplicate or unknown fields, invalid Base64, and non-canonical field sizes are rejected.
+- Connected peers are subject to bounded network I/O timeouts.
 - Secure provisioning of the pinned public key remains an operational
   requirement.
 
@@ -98,7 +101,7 @@ docker run --rm pqc-iot-secure pytest -v
 - [x] AES-256-GCM encrypted data channel
 - [x] Negative cryptographic tests
 - [x] Automated CI and dependency scanning
-- [ ] Input and network hardening
+- [x] Input and network hardening
 - [ ] Reproducible IoT benchmarks
 - [ ] Device authentication and identity lifecycle management
 
