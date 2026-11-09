@@ -4,17 +4,17 @@ import socket
 
 import oqs
 
-from src.common.device_registry import (
-    authorize_device,
-    load_device_registry,
-    verify_device_signature,
-)
 from src.common.crypto_utils import (
     NonceState,
     aead_decrypt,
     aead_encrypt,
     b64e,
     short_fingerprint,
+)
+from src.common.device_registry import (
+    authorize_device,
+    load_device_registry,
+    verify_device_signature,
 )
 from src.common.hkdf import derive_traffic_secrets
 from src.common.identity import load_server_identity_keypair
