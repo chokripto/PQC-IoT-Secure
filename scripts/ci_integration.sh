@@ -21,6 +21,9 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$secrets_dir"
+# The image runs as UID 10001. Permit the isolated CI directory to receive
+# generated key material; files themselves are still created with mode 0600.
+chmod 0777 "$secrets_dir"
 docker network create "$network" >/dev/null
 
 docker run --rm \
