@@ -108,6 +108,8 @@ jobs:
           ignore-unfixed: true
           vuln-type: os,library
           severity: HIGH,CRITICAL
+          scanners: vuln
+          trivyignores: .trivyignore.yaml
           version: v0.76.2
 
       - name: Run authenticated end-to-end exchange
