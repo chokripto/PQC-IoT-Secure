@@ -103,14 +103,32 @@ jobs:
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
           image-ref: pqc-iot-secure:ci
-          format: table
-          exit-code: "1"
+          format: json
+          output: trivy-results.json
+          exit-code: "0"
           ignore-unfixed: true
           vuln-type: os,library
           severity: HIGH,CRITICAL
           scanners: vuln
-          trivyignores: .trivyignore.yaml
           version: v0.76.2
+
+      - name: Upload Trivy evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: trivy-results-${{ github.sha }}
+          path: trivy-results.json
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Run authenticated end-to-end exchange
         run: bash scripts/ci_integration.sh pqc-iot-secure:ci
+
+      - name: Enforce HIGH and CRITICAL vulnerability gate
+        run: |
+          count="$(jq '[.Results[]?.Vulnerabilities[]?] | length' trivy-results.json)"
+          if [ "$count" -ne 0 ]; then
+            jq -r '.Results[]?.Vulnerabilities[]? |
+              [.VulnerabilityID, .PkgName, .InstalledVersion, (.PkgIdentifier.PURL // "no-purl")] |
+              @tsv' trivy-results.json
+            exit 1
+          fi
