@@ -103,6 +103,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: os,library
           severity: HIGH,CRITICAL
+          version: v0.76.2
 
       - name: Run authenticated end-to-end exchange
         run: bash scripts/ci_integration.sh pqc-iot-secure:ci
