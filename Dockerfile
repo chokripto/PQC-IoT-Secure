@@ -19,6 +19,7 @@ RUN git clone --branch "${LIBOQS_VERSION}" --depth 1 \
   && cmake -S /tmp/liboqs -B /tmp/liboqs/build -GNinja \
       -DBUILD_SHARED_LIBS=ON \
       -DOQS_BUILD_ONLY_LIB=ON \
+      -DOQS_MINIMAL_BUILD="KEM_ml_kem_768;SIG_ml_dsa_65" \
       -DCMAKE_INSTALL_PREFIX=/usr/local \
       -DCMAKE_INSTALL_LIBDIR=lib \
   && ninja -C /tmp/liboqs/build \
@@ -44,7 +45,12 @@ ENV PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:${PATH}"
 WORKDIR /app
 
-RUN groupadd --gid 10001 app \
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends --only-upgrade zlib1g \
+  && rm -rf /var/lib/apt/lists/* \
+  && /usr/local/bin/python -m pip uninstall -y setuptools \
+  && /opt/venv/bin/python -m pip uninstall -y setuptools wheel \
+  && groupadd --gid 10001 app \
   && useradd --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app
 
 COPY --from=builder /opt/venv /opt/venv
