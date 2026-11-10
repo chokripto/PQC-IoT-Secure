@@ -60,7 +60,7 @@ jobs:
 
       - name: Verify remediated runtime packaging tools
         run: |
-          docker run --rm pqc-iot-secure:ci python -c \
+          docker run --rm --entrypoint /usr/local/bin/python pqc-iot-secure:ci -c \
             "import setuptools; assert setuptools.__version__ == '84.2.1'"
 
       - name: Run cryptographic test suite
