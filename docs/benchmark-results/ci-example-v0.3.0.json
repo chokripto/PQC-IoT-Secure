@@ -1,0 +1,52 @@
+{
+  "configuration": {
+    "iterations": 10,
+    "kem_algorithm": "ML-KEM-768",
+    "payload_bytes": 31,
+    "signature_algorithm": "ML-DSA-65",
+    "warmup_iterations": 2
+  },
+  "environment": {
+    "architecture": "x86_64",
+    "cpu_affinity_count": 4,
+    "liboqs_python_version": "0.16.0.2",
+    "liboqs_version": "0.16.0",
+    "logical_cpus_visible": 4,
+    "operating_system": "Linux",
+    "os_release": "7.0.0-1019-azure",
+    "python_implementation": "CPython",
+    "python_version": "3.12.16",
+    "timer": "time.perf_counter_ns",
+    "timer_resolution_ns": 1
+  },
+  "interpretation": {
+    "container_build_time_included": false,
+    "network_latency_included": false,
+    "scope": "single-process cryptographic microbenchmark",
+    "warning": "Compare results only on controlled, equivalently configured hardware and software."
+  },
+  "process_peak_rss_kib": 37228,
+  "schema_version": 1,
+  "sizes_bytes": {
+    "client_transcript": 1243,
+    "encrypted_payload": 47,
+    "ml_dsa_public_key": 1952,
+    "ml_dsa_signature": 3309,
+    "ml_kem_ciphertext": 1088,
+    "ml_kem_public_key": 1184,
+    "ml_kem_shared_secret": 32,
+    "server_transcript": 1324
+  },
+  "timings": {
+    "aes_256_gcm_decrypt": {"max_ns": 1993, "mean_ns": 1768, "median_ns": 1752, "min_ns": 1712, "p95_ns": 1993, "samples": 10},
+    "aes_256_gcm_encrypt": {"max_ns": 1943, "mean_ns": 1715, "median_ns": 1688, "min_ns": 1652, "p95_ns": 1943, "samples": 10},
+    "hkdf_sha256_traffic_secrets": {"max_ns": 19820, "mean_ns": 14338, "median_ns": 13656, "min_ns": 13541, "p95_ns": 19820, "samples": 10},
+    "ml_dsa_65_keygen": {"max_ns": 28763, "mean_ns": 28380, "median_ns": 28338, "min_ns": 28153, "p95_ns": 28763, "samples": 10},
+    "ml_dsa_65_sign": {"max_ns": 155696, "mean_ns": 82256, "median_ns": 73456, "min_ns": 40581, "p95_ns": 155696, "samples": 10},
+    "ml_dsa_65_verify": {"max_ns": 42024, "mean_ns": 31308, "median_ns": 30156, "min_ns": 29875, "p95_ns": 42024, "samples": 10},
+    "ml_kem_768_decapsulate": {"max_ns": 12769, "mean_ns": 12341, "median_ns": 12198, "min_ns": 12089, "p95_ns": 12769, "samples": 10},
+    "ml_kem_768_encapsulate": {"max_ns": 12589, "mean_ns": 11957, "median_ns": 11913, "min_ns": 11607, "p95_ns": 12589, "samples": 10},
+    "ml_kem_768_keygen": {"max_ns": 11257, "mean_ns": 10493, "median_ns": 10400, "min_ns": 10156, "p95_ns": 11257, "samples": 10},
+    "protocol_v3_mutual_auth_crypto_handshake": {"max_ns": 382248, "mean_ns": 308587, "median_ns": 321662, "min_ns": 223368, "p95_ns": 382248, "samples": 10}
+  }
+}
