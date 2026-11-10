@@ -91,3 +91,15 @@ CPU or microcontroller, memory, operating system or firmware, compiler flags,
 power mode, Docker limits if any, commit SHA, and at least five independent
 runs. No fabricated or extrapolated benchmark numbers are included in this
 repository.
+
+## Published CI example
+
+A measured example from the v0.3.0 release-candidate workflow is preserved at
+[benchmark-results/ci-example-v0.3.0.json](benchmark-results/ci-example-v0.3.0.json).
+It was produced on a GitHub-hosted Azure Linux runner exposing four logical
+CPUs, using CPython 3.12.16, liboqs 0.16.0, and liboqs-python 0.16.0.2, with 2
+warm-up iterations and 10 measured iterations.
+
+The file is reproducibility evidence for the software path only. The runner CPU
+model and scheduling were not controlled, so these values are not an IoT-device
+performance claim and must not be compared directly with embedded hardware.
