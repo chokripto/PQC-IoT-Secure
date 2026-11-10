@@ -10,3 +10,6 @@ venv/
 .vscode/
 *.log
 secrets/
+results/
+benchmark.json
+sbom*.json
