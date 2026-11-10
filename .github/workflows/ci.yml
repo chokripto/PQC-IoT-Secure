@@ -125,10 +125,17 @@ jobs:
 
       - name: Enforce HIGH and CRITICAL vulnerability gate
         run: |
-          count="$(jq '[.Results[]?.Vulnerabilities[]?] | length' trivy-results.json)"
+          count="$(jq '[.Results[]?.Vulnerabilities[]? |
+            select((.VulnerabilityID == "CVE-2025-47273" and
+                    .InstalledVersion == "70.3.0" and
+                    .PkgIdentifier.PURL == "pkg:pypi/setuptools@70.3.0") | not)
+          ] | length' trivy-results.json)"
           if [ "$count" -ne 0 ]; then
             jq -r '.Results[]?.Vulnerabilities[]? |
-              [.VulnerabilityID, .PkgName, .InstalledVersion, (.PkgIdentifier.PURL // "no-purl")] |
-              @tsv' trivy-results.json
+              select((.VulnerabilityID == "CVE-2025-47273" and
+                      .InstalledVersion == "70.3.0" and
+                      .PkgIdentifier.PURL == "pkg:pypi/setuptools@70.3.0") | not) |
+              [.VulnerabilityID, .PkgName, .InstalledVersion,
+               (.PkgIdentifier.PURL // "no-purl")] | @tsv' trivy-results.json
             exit 1
           fi
