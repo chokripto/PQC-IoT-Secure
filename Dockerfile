@@ -48,14 +48,13 @@ WORKDIR /app
 RUN apt-get update \
   && apt-get install -y --no-install-recommends --only-upgrade zlib1g \
   && rm -rf /var/lib/apt/lists/* \
-  && /usr/local/bin/python -m pip uninstall -y setuptools \
-  && /opt/venv/bin/python -m pip uninstall -y setuptools wheel \
   && groupadd --gid 10001 app \
   && useradd --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app
 
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /usr/local/lib/liboqs.so* /usr/local/lib/
-RUN ldconfig
+RUN /opt/venv/bin/python -m pip uninstall -y setuptools wheel \
+  && ldconfig
 
 COPY --chown=app:app . /app
 RUN mkdir -p /app/secrets /app/results \
