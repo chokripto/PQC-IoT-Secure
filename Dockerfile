@@ -54,6 +54,9 @@ RUN apt-get update \
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /usr/local/lib/liboqs.so* /usr/local/lib/
 RUN /opt/venv/bin/python -m pip uninstall -y setuptools wheel \
+  && rm -rf /usr/local/lib/python3.12/ensurepip \
+      /usr/local/lib/python3.12/site-packages/setuptools* \
+      /opt/venv/lib/python3.12/site-packages/setuptools* \
   && ldconfig
 
 COPY --chown=app:app . /app
