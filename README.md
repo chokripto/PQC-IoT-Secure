@@ -1,10 +1,12 @@
 # Post-Quantum Secure Communication for IoT
 
 [![CI](https://github.com/chokripto/PQC-IoT-Secure/actions/workflows/ci.yml/badge.svg)](https://github.com/chokripto/PQC-IoT-Secure/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/badge/release-v0.3.0-informational.svg)](CHANGELOG.md)
 
 ## Overview
 
-This repository is a research and educational reference implementation of an
+This repository is a research and educational reference implementation of a
 mutually authenticated post-quantum secure channel between a simulated IoT
 device and a server.
 
@@ -39,7 +41,8 @@ See [docs/threat_model.md](docs/threat_model.md).
 5. Both peers bind the mutually authenticated transcript to HKDF-SHA-256.
 6. Independent AES-256-GCM keys and nonce bases protect both directions.
 
-See [docs/protocol.md](docs/protocol.md).
+See [docs/protocol.md](docs/protocol.md) and the
+[architecture and sequence diagrams](docs/architecture.md).
 
 ## Run with Docker
 
@@ -87,7 +90,7 @@ docker run --rm -v "$PWD/results:/results" pqc-iot-secure \
 ```
 
 See [docs/benchmarks.md](docs/benchmarks.md) for PowerShell instructions,
-the measurement methodology, and comparison limitations.
+the measurement methodology, CI benchmark evidence, and comparison limitations.
 
 ## Security notes
 
@@ -102,6 +105,14 @@ the measurement methodology, and comparison limitations.
 - Secure provisioning of the pinned public key remains an operational
   requirement.
 
+## Supply-chain evidence
+
+Every CI run builds the pinned multi-stage image, verifies the non-root runtime,
+audits the locked Python dependencies, scans the image with Trivy, generates an
+SPDX JSON SBOM, uploads benchmark evidence, and runs the mutually authenticated
+end-to-end exchange. CI artifacts are retained for a limited period and are
+supporting evidence, not a claim of production assurance.
+
 ## Repository structure
 
 - `src/server/`: authenticated server endpoint.
@@ -109,7 +120,7 @@ the measurement methodology, and comparison limitations.
 - `src/common/`: framing, transcript, HKDF, AEAD, and identity utilities.
 - `scripts/`: identity provisioning utilities.
 - `tests/`: interoperability and negative security tests.
-- `docs/`: protocol and threat-model documentation.
+- `docs/`: architecture, protocol, benchmark, identity, and threat-model documentation.
 
 ## Roadmap
 
@@ -124,7 +135,18 @@ the measurement methodology, and comparison limitations.
 - [x] Reproducible IoT benchmarks
 - [x] Device authentication and identity lifecycle management
 
-## License
+## Release status
 
-A formal license will be selected during the repository governance phase.
-Until then, no permission is granted beyond rights provided by applicable law.
+The current research release is `v0.3.0`. The project follows Semantic
+Versioning; pre-1.0 minor versions may introduce breaking protocol changes. See
+[CHANGELOG.md](CHANGELOG.md).
+
+## License and brand
+
+Source code, configuration, tests, and documentation are licensed under
+[Apache License 2.0](LICENSE). The license does not grant permission to use the
+name, logo, signature, portrait, or visual identity of Dr. Chokri NOUAR as a
+trademark or endorsement. See [BRAND_USAGE.md](BRAND_USAGE.md).
+
+Security reports follow [SECURITY.md](SECURITY.md), and contributions follow
+[CONTRIBUTING.md](CONTRIBUTING.md).

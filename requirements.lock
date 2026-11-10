@@ -1,0 +1,11 @@
+# Reproducible Python dependency set for the reference Docker image.
+# Update deliberately and validate with pip-audit and the full container CI.
+cryptography==50.0.1
+liboqs-python==0.16.0.2
+pytest==9.2.0
+cffi==2.0.0
+iniconfig==2.3.0
+packaging==25.0
+pluggy==1.7.0
+Pygments==2.20.0
+pycparser==2.23

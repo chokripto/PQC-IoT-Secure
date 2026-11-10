@@ -12,13 +12,21 @@ services:
       - ./secrets/server_identity_secret.key:/run/secrets/server_identity_secret.key:ro
       - ./secrets/device_registry.json:/run/secrets/device_registry.json:ro
     ports:
-      - "9000:9000"
+      - "127.0.0.1:9000:9000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
 
   device:
     build: .
     container_name: pqc_device
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     command: ["python", "-m", "src.device.device_client"]
     environment:
       PINNED_SERVER_IDENTITY_PUBLIC_KEY_FILE: /run/secrets/server_identity_public.key
@@ -29,3 +37,10 @@ services:
       - ./secrets/server_identity_public.key:/run/secrets/server_identity_public.key:ro
       - ./secrets/device-001/device_identity_public.key:/run/secrets/device_identity_public.key:ro
       - ./secrets/device-001/device_identity_secret.key:/run/secrets/device_identity_secret.key:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777

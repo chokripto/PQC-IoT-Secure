@@ -75,3 +75,31 @@ operating system. It is not an isolated per-operation allocation measurement.
 The complete-handshake measurement excludes sockets, serialization, container
 startup, provisioning, and network latency. Results from different hardware,
 operating systems, power modes, or liboqs builds are not directly comparable.
+
+## CI benchmark evidence
+
+Each successful CI run executes the harness with 10 measured iterations after
+2 warm-up iterations and uploads the resulting `benchmark.json` as a workflow
+artifact named `pqc-benchmark-<commit-sha>`. The JSON contains the runner
+platform, architecture, Python and liboqs versions, workload parameters, and
+raw summary statistics produced by the harness.
+
+These GitHub-hosted-runner results demonstrate reproducibility and regression
+visibility only. Shared-runner timing is variable and must not be presented as
+IoT hardware performance. A publishable device result must identify the exact
+CPU or microcontroller, memory, operating system or firmware, compiler flags,
+power mode, Docker limits if any, commit SHA, and at least five independent
+runs. No fabricated or extrapolated benchmark numbers are included in this
+repository.
+
+## Published CI example
+
+A measured example from the v0.3.0 release-candidate workflow is preserved at
+[benchmark-results/ci-example-v0.3.0.json](benchmark-results/ci-example-v0.3.0.json).
+It was produced on a GitHub-hosted Azure Linux runner exposing four logical
+CPUs, using CPython 3.12.16, liboqs 0.16.0, and liboqs-python 0.16.0.2, with 2
+warm-up iterations and 10 measured iterations.
+
+The file is reproducibility evidence for the software path only. The runner CPU
+model and scheduling were not controlled, so these values are not an IoT-device
+performance claim and must not be compared directly with embedded hardware.
